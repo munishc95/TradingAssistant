@@ -68,7 +68,8 @@ export function atr(period: number, candles: Candle[]): number[] {
 }
 
 function average(arr: number[]): number {
-  return arr.reduce((sum, v) => sum + v, 0) / Math.max(arr.length, 1);
+  if (arr.length === 0) return 0;
+  return arr.reduce((sum, v) => sum + v, 0) / arr.length;
 }
 
 export function pivotPoints(candles: Candle[], lookback = 5) {

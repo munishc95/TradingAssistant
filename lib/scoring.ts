@@ -1,5 +1,9 @@
 import { Candle, ema, rsi, atr } from './indicators';
 
+const BREAKOUT_THRESHOLD = 1.002;
+const PULLBACK_ATR_BAND = 0.5;
+const STOP_ATR_MULT = 1.5;
+
 export type FundamentalSnapshot = {
   marketCap?: number;
   pe?: number;
@@ -55,8 +59,8 @@ export function computeScores(
 
   const bullishTrend = last.close > lastEma20 && lastEma20 > lastEma50;
   const bearishTrend = last.close < lastEma20 && lastEma20 < lastEma50;
-  const breakout = last.close > twentyDayHigh * 1.002;
-  const pullback = last.close > lastEma50 && Math.abs(last.close - lastEma20) < lastAtr * 0.5;
+  const breakout = last.close > twentyDayHigh * BREAKOUT_THRESHOLD;
+  const pullback = last.close > lastEma50 && Math.abs(last.close - lastEma20) < lastAtr * PULLBACK_ATR_BAND;
 
   const technicalScoreRaw =
     (bullishTrend ? 25 : bearishTrend ? 15 : 5) +
@@ -74,9 +78,11 @@ export function computeScores(
   const setup: 'Breakout' | 'Pullback' = breakout ? 'Breakout' : 'Pullback';
   const entry =
     setup === 'Breakout'
-      ? round(twentyDayHigh * 1.002)
-      : round(lastEma20 + (pullback ? 0 : 0.5 * lastAtr));
-  const stop = round(Math.min(entry - 1.5 * lastAtr, candles[candles.length - 2]?.low - 0.5 * lastAtr || entry * 0.97));
+      ? round(twentyDayHigh * BREAKOUT_THRESHOLD)
+      : round(lastEma20 + (pullback ? 0 : PULLBACK_ATR_BAND * lastAtr));
+  const stop = round(
+    Math.min(entry - STOP_ATR_MULT * lastAtr, candles[candles.length - 2]?.low - 0.5 * lastAtr || entry * 0.97),
+  );
   const risk = entry - stop;
   const target1 = round(entry + 2 * risk);
   const target2 = round(entry + 3 * risk);
@@ -151,7 +157,8 @@ function deriveConfidence({
 }
 
 function average(arr: number[]): number {
-  return arr.reduce((s, v) => s + v, 0) / Math.max(arr.length, 1);
+  if (arr.length === 0) return 0;
+  return arr.reduce((s, v) => s + v, 0) / arr.length;
 }
 
 function clamp(value: number, min: number, max: number) {

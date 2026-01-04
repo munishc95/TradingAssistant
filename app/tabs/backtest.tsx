@@ -55,7 +55,7 @@ export default function BacktestTab() {
             onChange={(e) => setStrategy(e.target.value as any)}
             className="bg-surface border border-gray-700 rounded-md px-3 py-2 text-sm"
           >
-            <option value="swing">Swing Strategy (EMA + Supertrend)</option>
+            <option value="swing">Swing Strategy (EMA-based)</option>
             <option value="ema">EMA crossover</option>
           </select>
         </div>

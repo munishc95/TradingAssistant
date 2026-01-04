@@ -46,6 +46,7 @@ export default function DeepDiveTab() {
       data.candles.map((c) => ({ time: c.date.substring(0, 10), value: c.close })),
     );
     chartInstance.current = chart;
+    return () => chart.remove();
   }, [data]);
 
   const analyze = async (t?: string) => {

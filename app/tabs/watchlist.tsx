@@ -9,22 +9,26 @@ export default function WatchlistTab() {
   const [alerts, setAlerts] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      items.forEach(async (item) => {
+    const checkAlerts = async () => {
+      for (const item of items) {
         try {
           const res = await fetch('/api/fundamentals', { method: 'POST', body: JSON.stringify({ ticker: item.ticker }) });
           const json = await res.json();
-          if (!json?.price) return;
-          if (json.price >= item.entry && !alerts[item.ticker]) {
-            setAlerts((a) => ({ ...a, [item.ticker]: 'Entry hit' }));
-          }
+          if (!json?.price) continue;
+          setAlerts((prev) => {
+            if (prev[item.ticker] || json.price < item.entry) return prev;
+            return { ...prev, [item.ticker]: 'Entry hit' };
+          });
         } catch (error) {
           console.error('alert check', error);
         }
-      });
-    }, 1000 * 60 * 5);
+      }
+    };
+
+    const interval = setInterval(checkAlerts, 1000 * 60 * 5);
+    checkAlerts();
     return () => clearInterval(interval);
-  }, [items, alerts]);
+  }, [items]);
 
   const exportCsv = () => {
     const header = 'ticker,entry,stop,target1,target2\n';

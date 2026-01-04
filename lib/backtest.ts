@@ -17,6 +17,11 @@ export type BacktestResult = {
   equityCurve: { date: string; equity: number }[];
 };
 
+const TRADING_DAYS_PER_YEAR = 252;
+const MAX_HOLD_BARS = 5;
+const STOP_LOSS_PCT = 0.02;
+const TAKE_PROFIT_PCT = 0.04;
+
 export function runBacktest(candles: Candle[], config: BacktestConfig): BacktestResult {
   if (candles.length < 50) return emptyResult(candles);
   const closes = candles.map((c) => c.close);
@@ -34,7 +39,16 @@ export function runBacktest(candles: Candle[], config: BacktestConfig): Backtest
     const signal = config.strategy === 'ema' ? emaCross(ema20[i], ema50[i]) : swingSignal(closes, i);
     if (!signal) continue;
     const entry = candles[i + 1].open * (1 + config.slippage);
-    const exit = candles[i + 5]?.close ?? candles[candles.length - 1].close;
+    const lastPossibleIndex = Math.min(i + MAX_HOLD_BARS, candles.length - 1);
+    let exitIndex = lastPossibleIndex;
+    for (let j = i + 1; j <= lastPossibleIndex; j++) {
+      const price = candles[j].close;
+      if (price <= entry * (1 - STOP_LOSS_PCT) || price >= entry * (1 + TAKE_PROFIT_PCT)) {
+        exitIndex = j;
+        break;
+      }
+    }
+    const exit = candles[exitIndex].close;
     const grossReturn = (exit - entry) / entry - config.transactionCost;
     equity *= 1 + grossReturn;
     if (grossReturn > 0) wins++; else losses++;
@@ -44,7 +58,7 @@ export function runBacktest(candles: Candle[], config: BacktestConfig): Backtest
   }
 
   const totalReturn = equity - 1;
-  const years = candles.length / 252;
+  const years = candles.length / TRADING_DAYS_PER_YEAR;
   const cagr = Math.pow(equity, 1 / years) - 1;
   const trades = wins + losses || 1;
   const winRate = wins / trades;
